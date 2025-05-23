@@ -1,21 +1,37 @@
 diff --git a/test/sqlite/sqllogic_test_runner.cpp b/test/sqlite/sqllogic_test_runner.cpp
-index 64396193c4..269cebf4c7 100644
+index 64396193c4..a03c70af32 100644
 --- a/test/sqlite/sqllogic_test_runner.cpp
 +++ b/test/sqlite/sqllogic_test_runner.cpp
-@@ -116,7 +116,14 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
+@@ -115,9 +115,29 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
+ 	}
  	Reconnect();
  	string test_folder = TestCreatePath(dbpath);
- 	string name = UUID::ToString(UUID::GenerateRandomUUID());;
+-	string name = UUID::ToString(UUID::GenerateRandomUUID());;
 -	con->Query("ATTACH 'ducklake:"+test_folder+"/"+name+".db' AS ducklake (DATA_PATH '"+test_folder+"/"+name+"');");
+-	con->Query("USE ducklake;");
++	string name = UUID::ToString(UUID::GenerateRandomUUID());
 +
 +	string metadata_db = "";
-+	if (const char* ducklake_metadata_db = std::getenv("DUCKLAKE_METADATA_DB")) {
++	if (const char *ducklake_metadata_db = std::getenv("DUCKLAKE_METADATA_DB")) {
 +		metadata_db = std::string(ducklake_metadata_db) + ":";
 +	}
 +
++	string data_path = test_folder + "/" + name;
++	if (const char *ducklake_bucket_name = std::getenv("DUCKLAKE_S3_BUCKET_NAME")) {
++		data_path = "s3://" + std::string(ducklake_bucket_name);
++	}
 +	if (con->Query("ATTACH 'ducklake:" + metadata_db + test_folder + "/" + name + ".db' AS ducklake (DATA_PATH '" +
-+	           test_folder + "/" + name + "');")->HasError()) { SQLLogicTestLogger::LoadDatabaseFail(dbpath, "Error while ATTACHing database with DUCKLAKE_METADATA_DB = \'" + metadata_db + "\'"); FAIL(); }
-+ 	if (con->Query("USE ducklake;")->HasError()) { SQLLogicTestLogger::LoadDatabaseFail(dbpath, "Error while USEing database with DUCKLAKE_METADATA_DB = \'" + metadata_db + "\'"); FAIL(); }
--	con->Query("USE ducklake;");
++	               data_path + "');")
++	        ->HasError()) {
++		SQLLogicTestLogger::LoadDatabaseFail(dbpath, "Error while ATTACHing database with DUCKLAKE_METADATA_DB = \'" +
++		                                                 metadata_db + "\'");
++		FAIL();
++	}
++	if (con->Query("USE ducklake;")->HasError()) {
++		SQLLogicTestLogger::LoadDatabaseFail(dbpath, "Error while USEing database with DUCKLAKE_METADATA_DB = \'" +
++		                                                 metadata_db + "\'");
++		FAIL();
++	}
  
  	// load any previously loaded extensions again
+ 	if (load_extensions) {

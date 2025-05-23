@@ -43,3 +43,11 @@ Current tested values "", "duckdb", "sqlite"
 ```
 DUCKLAKE_METADATA_DB=sqlite ./build_extra/duckdb/build/release/test/unittest "[topn]"
 ```
+
+### DUCKLAKE_S3_BUCKET_NAME
+Bucket needs to exist and you need to have the correct privileges (possibly via creating the relevant persistent DuckDB secret)
+```
+DUCKLAKE_S3_BUCKET_NAME=my_bucket ./build_extra/duckdb/build/release/test/unittest "[topn]"
+```
+
+NOTE: this means data will be sent to the actual S3 bucket, and read over the wire. Do this with care.
