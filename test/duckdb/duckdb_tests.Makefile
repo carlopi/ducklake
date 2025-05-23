@@ -3,8 +3,11 @@ build_extra/duckdb:
 	git clone duckdb --single-branch --branch v1.3.0 build_extra/duckdb
 
 build_extra/patch_files:
-	find test/duckdb/patches/* -type f -name '*.patch' -print0 | xargs -0 cat | patch -p1 --forward -d build_extra/duckdb
-	touch build_extra/patch_files
+	patch -p1 --forward -d build_extra/duckdb < test/duckdb/patches/add_ducklake_include.patch
+	patch -p1 --forward -d build_extra/duckdb < test/duckdb/patches/include_ducklake.patch
+	patch -p1 --forward -d build_extra/duckdb < test/duckdb/patches/pdet_ducklake_as_duckdb.patch
+	patch -p1 --forward -d build_extra/duckdb < test/duckdb/patches/allow_optional_metadata.patch
+	touch -f build_extra/patch_files
 
 setup_duckdb_side_repo: build_extra/duckdb build_extra/patch_files
 

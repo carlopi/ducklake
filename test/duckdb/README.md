@@ -36,3 +36,10 @@ Run Tests
 # Run all tests (equivalent to './build_extra/duckdb/build/release/test/unittest')
 make run_all_tests_duckdb_side_repo
 ```
+Test step can, also via environemnt variable, take options like:
+
+### DUCKLAKE_METADATA_DB
+Current tested values "", "duckdb", "sqlite"
+```
+DUCKLAKE_METADATA_DB=sqlite ./build_extra/duckdb/build/release/test/unittest "[topn]"
+```
