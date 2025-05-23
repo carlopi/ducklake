@@ -1,0 +1,14 @@
+diff --git a/.github/config/out_of_tree_extensions.cmake b/.github/config/out_of_tree_extensions.cmake
+index b651262a0d..be4f27eed5 100644
+--- a/.github/config/out_of_tree_extensions.cmake
++++ b/.github/config/out_of_tree_extensions.cmake
+@@ -178,3 +178,9 @@ duckdb_extension_load(encodings
+         TEST_DIR test/sql
+ )
+ endif()
++
++duckdb_extension_load(ducklake
++        SOURCE_DIR ${CMAKE_SOURCE_DIR}/../..
++        INCLUDE_DIR ${CMAKE_SOURCE_DIR}../../include
++)   
++            

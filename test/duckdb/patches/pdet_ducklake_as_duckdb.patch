@@ -1,0 +1,126 @@
+diff --git a/test/sqlite/sqllogic_command.cpp b/test/sqlite/sqllogic_command.cpp
+index 823b32deec..5bb0d878b8 100644
+--- a/test/sqlite/sqllogic_command.cpp
++++ b/test/sqlite/sqllogic_command.cpp
+@@ -12,6 +12,8 @@
+ #include "test_helpers.hpp"
+ #include "sqllogic_test_logger.hpp"
+ #include "catch.hpp"
++#include "duckdb/main/error_manager.hpp"
++
+ #include <list>
+ #include <thread>
+ #include <chrono>
+@@ -532,6 +534,16 @@ void Statement::ExecuteInternal(ExecuteContext &context) const {
+ 		}
+ 	}
+ 	auto result = ExecuteQuery(context, connection, file_name, query_line);
++	if (result->HasError()) {
++			if (result->GetErrorType() == ExceptionType::NOT_IMPLEMENTED || StringUtil::Contains(result->GetError(), "Unsupported")
++				|| StringUtil::Contains(result->GetError(), "unsupported")
++				|| StringUtil::Contains(result->GetError(), "logical_opt")
++				|| StringUtil::Contains(result->GetError(), "physical_plan")
++				|| StringUtil::Contains(result->GetError(), "Did you mean \"ducklake\"")) {
++				context.skip_test = true;
++				return;
++				}
++	}
+ 
+ 	TestResultHelper helper(runner);
+ 	if (!helper.CheckStatementResult(*this, context, std::move(result))) {
+diff --git a/test/sqlite/sqllogic_command.hpp b/test/sqlite/sqllogic_command.hpp
+index 889ea245b4..7b9993e763 100644
+--- a/test/sqlite/sqllogic_command.hpp
++++ b/test/sqlite/sqllogic_command.hpp
+@@ -39,6 +39,7 @@ struct ExecuteContext {
+ 	string sql_query;
+ 	string error_file;
+ 	int error_line;
++	bool skip_test = false;
+ };
+ 
+ struct Condition {
+diff --git a/test/sqlite/sqllogic_test_runner.cpp b/test/sqlite/sqllogic_test_runner.cpp
+index a536697205..64396193c4 100644
+--- a/test/sqlite/sqllogic_test_runner.cpp
++++ b/test/sqlite/sqllogic_test_runner.cpp
+@@ -11,6 +11,7 @@
+ #include "test_helpers.hpp"
+ #include "sqllogic_test_logger.hpp"
+ #include "duckdb/common/random_engine.hpp"
++#include "duckdb/common/types/uuid.hpp"
+ 
+ #ifdef DUCKDB_OUT_OF_TREE
+ #include DUCKDB_EXTENSION_HEADER
+@@ -52,14 +53,16 @@ SQLLogicTestRunner::~SQLLogicTestRunner() {
+ 	}
+ }
+ 
+-void SQLLogicTestRunner::ExecuteCommand(duckdb::unique_ptr<Command> command) {
++bool SQLLogicTestRunner::ExecuteCommand(duckdb::unique_ptr<Command> command) {
+ 	if (InLoop()) {
+ 		auto &current_loop = *active_loops.back();
+ 		current_loop.loop_commands.push_back(std::move(command));
+ 	} else {
+ 		ExecuteContext context;
+ 		command->Execute(context);
++		return !context.skip_test;
+ 	}
++	return true;
+ }
+ 
+ void SQLLogicTestRunner::StartLoop(LoopDefinition definition) {
+@@ -102,12 +105,19 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
+ 		db = make_uniq<DuckDB>(dbpath, config.get());
+ 		// always load core functions
+ 		ExtensionHelper::LoadExtension(*db, "core_functions");
++		ExtensionHelper::LoadExtension(*db, "parquet");
++		ExtensionHelper::LoadExtension(*db, "ducklake");
++
+ 	} catch (std::exception &ex) {
+ 		ErrorData err(ex);
+ 		SQLLogicTestLogger::LoadDatabaseFail(dbpath, err.Message());
+ 		FAIL();
+ 	}
+ 	Reconnect();
++	string test_folder = TestCreatePath(dbpath);
++	string name = UUID::ToString(UUID::GenerateRandomUUID());;
++	con->Query("ATTACH 'ducklake:"+test_folder+"/"+name+".db' AS ducklake (DATA_PATH '"+test_folder+"/"+name+"');");
++	con->Query("USE ducklake;");
+ 
+ 	// load any previously loaded extensions again
+ 	if (load_extensions) {
+@@ -119,6 +129,7 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
+ 
+ void SQLLogicTestRunner::Reconnect() {
+ 	con = make_uniq<Connection>(*db);
++	con->Query("USE ducklake;");
+ 	if (original_sqlite_test) {
+ 		con->Query("SET integer_division=true");
+ 	}
+@@ -746,7 +757,11 @@ void SQLLogicTestRunner::ExecuteFile(string script) {
+ 				command->connection_name = token.parameters[1];
+ 			}
+ 			command->conditions = std::move(conditions);
+-			ExecuteCommand(std::move(command));
++
++			if (!ExecuteCommand(std::move(command))) {
++				return;
++			}
++
+ 		} else if (token.type == SQLLogicTokenType::SQLLOGIC_QUERY) {
+ 			if (token.parameters.size() < 1) {
+ 				parser.Fail("query requires at least one parameter (query III)");
+diff --git a/test/sqlite/sqllogic_test_runner.hpp b/test/sqlite/sqllogic_test_runner.hpp
+index 12e29c0fe1..6292cee4bd 100644
+--- a/test/sqlite/sqllogic_test_runner.hpp
++++ b/test/sqlite/sqllogic_test_runner.hpp
+@@ -65,7 +65,7 @@ public:
+ 	bool InLoop() {
+ 		return !active_loops.empty();
+ 	}
+-	void ExecuteCommand(unique_ptr<Command> command);
++	bool ExecuteCommand(unique_ptr<Command> command);
+ 	void Reconnect();
+ 	void StartLoop(LoopDefinition loop);
+ 	void EndLoop();

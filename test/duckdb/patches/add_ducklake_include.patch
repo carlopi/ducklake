@@ -1,0 +1,26 @@
+commit 64c1881cb7219b89062643e859804736c8ad9d6b
+Author: Carlo Piovesan <piovesan.carlo@gmail.com>
+Date:   Fri May 23 10:22:10 2025 +0200
+
+    Add ducklake_extension.hpp
+
+diff --git a/extension/core_functions/include/ducklake_extension.hpp b/extension/core_functions/include/ducklake_extension.hpp
+new file mode 100644
+index 0000000000..69981bf93b
+--- /dev/null
++++ b/extension/core_functions/include/ducklake_extension.hpp
+@@ -0,0 +1,14 @@
++#pragma once
++
++#include "duckdb.hpp"
++
++namespace duckdb {
++
++class DucklakeExtension : public Extension {
++public:
++	void Load(DuckDB &db) override;
++	std::string Name() override;
++	std::string Version() const override;
++};
++
++} // namespace duckdb
