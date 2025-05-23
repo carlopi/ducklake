@@ -1,6 +1,6 @@
 build_extra/duckdb:
 	mkdir -p build_extra
-	git clone https://github.com/duckdb/duckdb.git --single-branch --branch v1.3.0 build_extra/duckdb
+	git clone duckdb --single-branch --branch v1.3.0 build_extra/duckdb
 
 build_extra/patch_files:
 	find test/duckdb/patches/* -type f -name '*.patch' -print0 | xargs -0 cat | patch -p1 --forward -d build_extra/duckdb
