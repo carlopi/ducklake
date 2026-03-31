@@ -1386,7 +1386,11 @@ WHERE data.table_id=%d AND {SNAPSHOT_ID} >= data.begin_snapshot AND ({SNAPSHOT_I
 	if (!where_clause.empty()) {
 		query += "\nAND " + where_clause;
 	}
-	// Add ORDER BY clause for Top-N optimization if generated
+	// Add ORDER BY clause: use dynamic filter ordering for Top-N, otherwise order by row_id_start
+	// so that LIMIT can short-circuit after reading the first files
+	if (order_by_clause.empty()) {
+		order_by_clause = "\nORDER BY data.row_id_start ASC NULLS LAST";
+	}
 	query += order_by_clause;
 	auto result = transaction.Query(snapshot, query);
 	if (result->HasError()) {
